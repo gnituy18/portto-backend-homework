@@ -94,7 +94,7 @@ func (im *impl) GetTransation(ctx context.Context, txHash common.Hash) (*Transat
 	for _, log := range recp.Logs {
 		logs = append(logs, &Log{
 			Index: log.Index,
-			Data:  string(log.Data),
+			Data:  common.Bytes2Hex(log.Data),
 		})
 	}
 
@@ -119,13 +119,22 @@ func (im *impl) GetTransation(ctx context.Context, txHash common.Hash) (*Transat
 		return nil, err
 	}
 
+	var val int64
+	if tx.Value() != nil {
+		val = tx.Value().Int64()
+	}
+	var to string
+	if tx.To() != nil {
+		to = tx.To().String()
+	}
+
 	return &Transation{
 		TxHash: tx.Hash().String(),
 		From:   msg.From().Hex(),
-		To:     tx.To().String(),
+		To:     to,
 		Nonce:  tx.Nonce(),
-		Data:   string(tx.Data()),
-		Value:  tx.Value().String(),
+		Data:   common.Bytes2Hex(tx.Data()),
+		Value:  val,
 		Logs:   logs,
 	}, nil
 }

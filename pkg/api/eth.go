@@ -19,7 +19,7 @@ func MountEthRoutes(group *gin.RouterGroup, ethClient eth.Eth) error {
 	blocks.GET("/", handler.getBlocks)
 	blocks.GET("/:hash", handler.getBlock)
 
-	transation := group.Group("/transation")
+	transation := group.Group("/transaction")
 	transation.GET("/:txHash", handler.getTransation)
 
 	return nil

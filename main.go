@@ -10,8 +10,12 @@ import (
 	"prottohw/pkg/log"
 )
 
+var (
+	rpcEndpoint = "https://data-seed-prebsc-2-s3.binance.org:8545"
+)
+
 func main() {
-	ethclient := eth.New("url")
+	ethclient := eth.New(rpcEndpoint)
 	router := gin.Default()
 	router.Use(api.InjectContext)
 	router.GET("/health", func(c *gin.Context) {

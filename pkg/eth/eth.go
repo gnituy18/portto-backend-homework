@@ -1,12 +1,14 @@
 package eth
 
 import (
-	"context"
+	"prottohw/pkg/context"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 type Eth interface {
-	GetBlocks(ctx context.Context, n int64) ([]*Block, error)
-	GetBlock(ctx context.Context, id int64) (*Block, error)
+	GetBlocks(ctx context.Context, n uint64) ([]*Block, error)
+	GetBlock(ctx context.Context, id uint64) (*Block, error)
 
-	GetTransation(ctx context.Context, txHash Hash) (*Transation, error)
+	GetTransation(ctx context.Context, txHash common.Hash) (*Transation, error)
 }

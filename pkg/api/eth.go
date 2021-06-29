@@ -30,8 +30,7 @@ type ethHandler struct {
 }
 
 func (h *ethHandler) getBlocks(c *gin.Context) {
-	val, _ := c.Get("ctx")
-	ctx := val.(context.Context)
+	ctx := c.MustGet("ctx").(context.Context)
 
 	limitStr := c.Query("limit")
 	n, err := strconv.ParseInt(limitStr, 10, 64)
@@ -50,12 +49,10 @@ func (h *ethHandler) getBlocks(c *gin.Context) {
 }
 
 func (h *ethHandler) getBlock(c *gin.Context) {
-	val, _ := c.Get("ctx")
-	ctx := val.(context.Context)
+	ctx := c.MustGet("ctx").(context.Context)
 
 	hashHexStr := c.Param("hash")
 	hash := common.HexToHash(hashHexStr)
-
 
 	block, err := h.ethClient.GetBlock(ctx, hash)
 	if err == eth.ErrNotFound {
@@ -70,6 +67,19 @@ func (h *ethHandler) getBlock(c *gin.Context) {
 }
 
 func (h *ethHandler) getTransation(c *gin.Context) {
-	txHash := c.Param("txHash")
-	c.String(http.StatusOK, txHash)
+	ctx := c.MustGet("ctx").(context.Context)
+
+	txHashHexStr := c.Param("txHash")
+	txHash := common.HexToHash(txHashHexStr)
+
+	tx, err := h.ethClient.GetTransation(ctx, txHash)
+	if err == eth.ErrNotFound {
+		c.JSON(http.StatusNotFound, errMsg(err))
+		return
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, errMsg(err))
+		return
+	}
+
+	c.JSON(http.StatusOK, tx)
 }

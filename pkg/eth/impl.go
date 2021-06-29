@@ -1,10 +1,11 @@
 package eth
 
 import (
-	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"go.uber.org/zap"
 
@@ -81,5 +82,51 @@ func (im *impl) GetBlock(ctx context.Context, hash common.Hash) (*Block, error) 
 }
 
 func (im *impl) GetTransation(ctx context.Context, txHash common.Hash) (*Transation, error) {
-	return nil, errors.New("TODO")
+	recp, err := im.goEthClient.TransactionReceipt(ctx, txHash)
+	if err != nil {
+		ctx.With(
+			zap.Error(err),
+			zap.String("txHash", txHash.String()),
+		).Error("goEthClient.TransactionReceipt failed in eth.GetTransation")
+		return nil, err
+	}
+
+	logs := []*Log{}
+	for _, log := range recp.Logs {
+		logs = append(logs, &Log{
+			Index: log.Index,
+			Data:  string(log.Data),
+		})
+	}
+
+	tx, _, err := im.goEthClient.TransactionByHash(ctx, txHash)
+	if err != nil {
+		ctx.With(
+			zap.Error(err),
+			zap.String("txHash", txHash.String()),
+		).Error("goEthClient.TransactionReceipt failed in eth.GetTransation")
+		return nil, err
+	}
+
+	chainID, err := im.goEthClient.NetworkID(ctx)
+	if err != nil {
+		ctx.With(zap.Error(err)).Error("goEthClient.NetWorkID failed in eth.GetTransation")
+		return nil, err
+	}
+
+	msg, err := tx.AsMessage(types.NewEIP155Signer(chainID), nil)
+	if err != nil {
+		ctx.With(zap.Error(err)).Error("tx.AsMessage failed in eth.GetTransation")
+		return nil, err
+	}
+
+	return &Transation{
+		TxHash: tx.Hash().String(),
+		From:   msg.From().Hex(),
+		To:     tx.To().String(),
+		Nonce:  tx.Nonce(),
+		Data:   string(tx.Data()),
+		Value:  tx.Value().String(),
+		Logs:   logs,
+	}, nil
 }

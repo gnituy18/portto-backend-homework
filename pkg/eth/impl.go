@@ -52,7 +52,6 @@ func (im *impl) GetBlocks(ctx context.Context, n uint64) ([]*Block, error) {
 		})
 	}
 
-	ctx.Infof("%v", blocks)
 	return blocks, nil
 }
 
@@ -90,14 +89,6 @@ func (im *impl) GetTransation(ctx context.Context, txHash common.Hash) (*Transat
 		return nil, err
 	}
 
-	logs := []*Log{}
-	for _, log := range recp.Logs {
-		logs = append(logs, &Log{
-			Index: log.Index,
-			Data:  common.Bytes2Hex(log.Data),
-		})
-	}
-
 	tx, _, err := im.goEthClient.TransactionByHash(ctx, txHash)
 	if err != nil {
 		ctx.With(
@@ -112,7 +103,6 @@ func (im *impl) GetTransation(ctx context.Context, txHash common.Hash) (*Transat
 		ctx.With(zap.Error(err)).Error("goEthClient.NetWorkID failed in eth.GetTransation")
 		return nil, err
 	}
-
 	msg, err := tx.AsMessage(types.NewEIP155Signer(chainID), nil)
 	if err != nil {
 		ctx.With(zap.Error(err)).Error("tx.AsMessage failed in eth.GetTransation")
@@ -126,6 +116,13 @@ func (im *impl) GetTransation(ctx context.Context, txHash common.Hash) (*Transat
 	var to string
 	if tx.To() != nil {
 		to = tx.To().String()
+	}
+	logs := []*Log{}
+	for _, log := range recp.Logs {
+		logs = append(logs, &Log{
+			Index: log.Index,
+			Data:  common.Bytes2Hex(log.Data),
+		})
 	}
 
 	return &Transation{

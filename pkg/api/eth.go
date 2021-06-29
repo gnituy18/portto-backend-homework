@@ -2,9 +2,11 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 
+	"prottohw/pkg/context"
 	"prottohw/pkg/eth"
 )
 
@@ -27,8 +29,21 @@ type ethHandler struct {
 }
 
 func (h *ethHandler) getBlocks(c *gin.Context) {
-	n := c.Query("limit")
-	c.String(http.StatusOK, n)
+	val, _ := c.Get("ctx")
+	ctx := val.(context.Context)
+
+	limitStr := c.Query("limit")
+	n, err := strconv.ParseInt(limitStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, errMsg(err))
+	}
+
+	blocks, err := h.ethClient.GetBlocks(ctx, n)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, errMsg(err))
+	}
+
+	c.JSON(http.StatusOK, gin.H{"blocks": blocks})
 }
 
 func (h *ethHandler) getBlock(c *gin.Context) {

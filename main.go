@@ -12,8 +12,8 @@ import (
 
 func main() {
 	ethclient := eth.New("url")
-
 	router := gin.Default()
+	router.Use(api.InjectContext)
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, "healthy")
 	})

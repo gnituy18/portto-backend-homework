@@ -5,7 +5,7 @@ type Block struct {
 	BlockHash    string   `json:"block_hash"`
 	BlockTime    uint64   `json:"block_time"`
 	ParentHash   string   `json:"parent_hash"`
-	Transactions []string `json:"transations"`
+	Transactions []string `json:"transations,omitempty"`
 }
 
 type Transation struct {

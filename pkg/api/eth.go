@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gin-gonic/gin"
 
 	"prottohw/pkg/context"
@@ -16,7 +17,7 @@ func MountEthRoutes(group *gin.RouterGroup, ethClient eth.Eth) error {
 	}
 	blocks := group.Group("/blocks")
 	blocks.GET("/", handler.getBlocks)
-	blocks.GET("/:id", handler.getBlocks)
+	blocks.GET("/:hash", handler.getBlock)
 
 	transation := group.Group("/transation")
 	transation.GET("/:txHash", handler.getTransation)
@@ -49,8 +50,23 @@ func (h *ethHandler) getBlocks(c *gin.Context) {
 }
 
 func (h *ethHandler) getBlock(c *gin.Context) {
-	id := c.Param("id")
-	c.String(http.StatusOK, id)
+	val, _ := c.Get("ctx")
+	ctx := val.(context.Context)
+
+	hashHexStr := c.Param("hash")
+	hash := common.HexToHash(hashHexStr)
+
+
+	block, err := h.ethClient.GetBlock(ctx, hash)
+	if err == eth.ErrNotFound {
+		c.JSON(http.StatusNotFound, errMsg(err))
+		return
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, errMsg(err))
+		return
+	}
+
+	c.JSON(http.StatusOK, block)
 }
 
 func (h *ethHandler) getTransation(c *gin.Context) {

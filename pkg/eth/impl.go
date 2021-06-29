@@ -56,8 +56,28 @@ func (im *impl) GetBlocks(ctx context.Context, n uint64) ([]*Block, error) {
 	return blocks, nil
 }
 
-func (im *impl) GetBlock(ctx context.Context, id uint64) (*Block, error) {
-	return nil, errors.New("TODO")
+func (im *impl) GetBlock(ctx context.Context, hash common.Hash) (*Block, error) {
+	block, err := im.goEthClient.BlockByHash(ctx, hash)
+	if err != nil {
+		ctx.With(
+			zap.Error(err),
+			zap.String("hash", hash.String()),
+		).Error("goEthClient.BlockByNumber failed in eth.GetBlocks")
+		return nil, err
+	}
+
+	txHashs := []string{}
+	for _, tx := range block.Transactions() {
+		txHashs = append(txHashs, tx.Hash().String())
+	}
+
+	return &Block{
+		BlockNum:     block.NumberU64(),
+		BlockHash:    block.Hash().String(),
+		BlockTime:    block.Time(),
+		ParentHash:   block.ParentHash().String(),
+		Transactions: txHashs,
+	}, nil
 }
 
 func (im *impl) GetTransation(ctx context.Context, txHash common.Hash) (*Transation, error) {

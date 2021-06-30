@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"prottohw/pkg/api"
+	"prottohw/pkg/db"
 	"prottohw/pkg/eth"
 	"prottohw/pkg/log"
 )
@@ -15,7 +16,11 @@ var (
 )
 
 func main() {
-	ethclient := eth.New(rpcEndpoint)
+	pg, err := db.NewPostgres()
+	if err != nil {
+		panic(err)
+	}
+	ethclient := eth.New(rpcEndpoint, pg)
 	router := gin.Default()
 	router.Use(api.InjectContext)
 	router.GET("/health", func(c *gin.Context) {

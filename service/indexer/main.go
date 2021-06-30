@@ -20,13 +20,12 @@ var (
 )
 
 func main() {
-	// db conn
-	_, err := db.NewPostgres()
+	pg, err := db.NewPostgres()
 	if err != nil {
 		panic(err)
 	}
 
-	ethclient := eth.New(rpcEndpoint)
+	ethclient := eth.New(rpcEndpoint, pg)
 	numReader := NewBlockNumReader(ethclient)
 
 	// crawers
@@ -34,8 +33,6 @@ func main() {
 	for i := 0; i <= workerNum; i++ {
 		go worker(numCh, ethclient)
 	}
-
-	// Update latest block num
 
 	for blockNum := startingBlockNum; ; blockNum++ {
 		n := numReader.GetBlockNum()
@@ -69,6 +66,7 @@ var (
 	updateBlockNumInterval = time.Minute
 )
 
+// BlockNumReader try to minimize RPC call by getting latest block number once per minute
 func NewBlockNumReader(ethclient eth.Eth) *BlockNumReader {
 	reader := &BlockNumReader{}
 

@@ -7,11 +7,12 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 
 	"prottohw/pkg/context"
 )
 
-func New(url string) Eth {
+func New(url string, db *gorm.DB) Eth {
 	goEthClient, err := ethclient.Dial(url)
 	if err != nil {
 		panic(err)
@@ -19,6 +20,7 @@ func New(url string) Eth {
 
 	return &impl{
 		goEthClient: goEthClient,
+		db:          db,
 		url:         url,
 	}
 }
@@ -26,6 +28,7 @@ func New(url string) Eth {
 type impl struct {
 	goEthClient *ethclient.Client
 	url         string
+	db          *gorm.DB
 }
 
 func (im *impl) GetBlockNum(ctx context.Context) (uint64, error) {

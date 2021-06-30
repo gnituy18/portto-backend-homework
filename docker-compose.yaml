@@ -9,12 +9,21 @@ services:
       - "8080:8080"
     depends_on:
       - db
+    networks:
+      serv:
+        aliases:
+          - apiserver
+
   indexer:
     build: 
       context: ./
       dockerfile: ./service/indexer/Dockerfile
     depends_on:
       - db
+    networks:
+      serv:
+        aliases:
+          - indexer
   db:                    
     image: postgres
     restart: always
@@ -25,3 +34,12 @@ services:
       - "5432:5432"
     volumes:
       - ./service/db:/docker-entrypoint-initdb.d
+    networks:
+      serv:
+        aliases:
+          - db
+
+networks:
+  serv:
+    name: serv
+    driver: bridge

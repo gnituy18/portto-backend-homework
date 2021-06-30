@@ -1,6 +1,6 @@
 create database hw;
 
-create table Block (
+create table block (
   block_num bigint not null unique,
   block_hash char(64) not null unique,
   block_time bigint not null,
@@ -8,4 +8,4 @@ create table Block (
   PRIMARY KEY (block_num)
 );
 
-create index block_num_index on Block(block_num);
+create index block_num_index on block(block_num);

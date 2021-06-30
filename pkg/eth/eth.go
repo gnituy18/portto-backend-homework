@@ -20,5 +20,5 @@ type Eth interface {
 	GetBlockByNumberDB(ctx context.Context, n uint64) (*Block, error)
 	SaveBlock(b *Block) error
 
-	GetTransation(ctx context.Context, txHash common.Hash) (*Transation, error)
+	GetTransaction(ctx context.Context, txHash common.Hash) (*Transaction, error)
 }

@@ -155,13 +155,13 @@ func (im *impl) GetBlock(ctx context.Context, hash common.Hash) (*Block, error) 
 	}, nil
 }
 
-func (im *impl) GetTransation(ctx context.Context, txHash common.Hash) (*Transation, error) {
+func (im *impl) GetTransaction(ctx context.Context, txHash common.Hash) (*Transaction, error) {
 	recp, err := im.goEthClient.TransactionReceipt(ctx, txHash)
 	if err != nil {
 		ctx.With(
 			zap.Error(err),
 			zap.String("txHash", txHash.String()),
-		).Error("goEthClient.TransactionReceipt failed in eth.GetTransation")
+		).Error("goEthClient.TransactionReceipt failed in eth.GetTransaction")
 		return nil, err
 	}
 
@@ -170,18 +170,18 @@ func (im *impl) GetTransation(ctx context.Context, txHash common.Hash) (*Transat
 		ctx.With(
 			zap.Error(err),
 			zap.String("txHash", txHash.String()),
-		).Error("goEthClient.TransactionReceipt failed in eth.GetTransation")
+		).Error("goEthClient.TransactionReceipt failed in eth.GetTransaction")
 		return nil, err
 	}
 
 	chainID, err := im.goEthClient.NetworkID(ctx)
 	if err != nil {
-		ctx.With(zap.Error(err)).Error("goEthClient.NetWorkID failed in eth.GetTransation")
+		ctx.With(zap.Error(err)).Error("goEthClient.NetWorkID failed in eth.GetTransaction")
 		return nil, err
 	}
 	msg, err := tx.AsMessage(types.NewEIP155Signer(chainID), nil)
 	if err != nil {
-		ctx.With(zap.Error(err)).Error("tx.AsMessage failed in eth.GetTransation")
+		ctx.With(zap.Error(err)).Error("tx.AsMessage failed in eth.GetTransaction")
 		return nil, err
 	}
 
@@ -201,7 +201,7 @@ func (im *impl) GetTransation(ctx context.Context, txHash common.Hash) (*Transat
 		})
 	}
 
-	return &Transation{
+	return &Transaction{
 		TxHash: tx.Hash().String(),
 		From:   msg.From().Hex(),
 		To:     to,
@@ -210,4 +210,13 @@ func (im *impl) GetTransation(ctx context.Context, txHash common.Hash) (*Transat
 		Value:  val,
 		Logs:   logs,
 	}, nil
+}
+
+func (im *impl) SaveTransaction(b *Transaction) error {
+	res := im.db.Create(b)
+	if res.Error != nil {
+		return res.Error
+	}
+
+	return nil
 }

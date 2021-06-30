@@ -19,8 +19,8 @@ func MountEthRoutes(group *gin.RouterGroup, ethClient eth.Eth) error {
 	blocks.GET("/", handler.getBlocks)
 	blocks.GET("/:hash", handler.getBlock)
 
-	transation := group.Group("/transaction")
-	transation.GET("/:txHash", handler.getTransation)
+	transaction := group.Group("/transaction")
+	transaction.GET("/:txHash", handler.getTransaction)
 
 	return nil
 }
@@ -66,13 +66,13 @@ func (h *ethHandler) getBlock(c *gin.Context) {
 	c.JSON(http.StatusOK, block)
 }
 
-func (h *ethHandler) getTransation(c *gin.Context) {
+func (h *ethHandler) getTransaction(c *gin.Context) {
 	ctx := c.MustGet("ctx").(context.Context)
 
 	txHashHexStr := c.Param("txHash")
 	txHash := common.HexToHash(txHashHexStr)
 
-	tx, err := h.ethClient.GetTransation(ctx, txHash)
+	tx, err := h.ethClient.GetTransaction(ctx, txHash)
 	if err == eth.ErrNotFound {
 		c.JSON(http.StatusNotFound, errMsg(err))
 		return

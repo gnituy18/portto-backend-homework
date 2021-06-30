@@ -1,8 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"time"
+
+	"go.uber.org/zap"
 
 	"prottohw/pkg/context"
 	"prottohw/pkg/db"
@@ -12,31 +13,31 @@ import (
 
 var (
 	rpcEndpoint      = "https://data-seed-prebsc-2-s3.binance.org:8545"
-	startingBlockNum = 100000
-	// Modify this num to adjust the
+	startingBlockNum = uint64(100000)
+	// Modify this num to adjust the worker number
 	workerNum = 10
 )
 
 func main() {
-	ctx := context.Background()
-
 	// db conn
 	_, err := db.NewPostgres()
 	if err != nil {
 		panic(err)
 	}
 
-	// eth client
 	ethclient := eth.New(rpcEndpoint)
+	numReader := NewBlockNumReader(ethclient)
 
-	// init worker
-	numCh := make(chan int)
+	// crawers
+	numCh := make(chan uint64)
 	for i := 0; i <= workerNum; i++ {
-		go craw(numCh)
+		go worker(numCh, ethclient)
 	}
 
+	// Update latest block num
+
 	for blockNum := startingBlockNum; ; blockNum++ {
-		n, err := ethclient.GetBlockNum(ctx)
+		n := numReader.GetBlockNum()
 		if err != nil {
 			log.Global().Error("ethclient.GetBlockNum failed")
 		}
@@ -51,9 +52,14 @@ func main() {
 	}
 }
 
-func craw(numCh <-chan int) {
+func worker(numCh <-chan uint64, ethclient eth.Eth) {
 	for n := range numCh {
-		time.Sleep(time.Second)
-		fmt.Println(n)
+		block, err := ethclient.GetBlockByNumber(context.Background(), n)
+		if err != nil {
+			log.Global().Error("block hash:" + block.BlockHash)
+			continue
+		}
+
+		log.Global().With(zap.String("block hash", block.BlockHash)).Info("GetBlockByNumber")
 	}
 }

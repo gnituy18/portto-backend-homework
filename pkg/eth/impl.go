@@ -38,6 +38,22 @@ func (im *impl) GetBlockNum(ctx context.Context) (uint64, error) {
 	return currNum, nil
 }
 
+func (im *impl) GetBlockByNumber(ctx context.Context, blockNum uint64) (*Block, error) {
+	blockNumBig := big.NewInt(int64(blockNum))
+	block, err := im.goEthClient.BlockByNumber(ctx, blockNumBig)
+	if err != nil {
+		ctx.With(zap.Error(err)).Error("goEthClient.BlockByNumber failed in eth.GetBlocks")
+		return nil, err
+	}
+
+	return &Block{
+		BlockNum:   block.NumberU64(),
+		BlockHash:  block.Hash().String(),
+		BlockTime:  block.Time(),
+		ParentHash: block.ParentHash().String(),
+	}, nil
+}
+
 func (im *impl) GetBlocks(ctx context.Context, n uint64) ([]*Block, error) {
 	currNum, err := im.GetBlockNum(ctx)
 	if err != nil {
@@ -47,19 +63,14 @@ func (im *impl) GetBlocks(ctx context.Context, n uint64) ([]*Block, error) {
 
 	blocks := []*Block{}
 	for i := 0; i < int(n); i++ {
-		blockNum := big.NewInt(int64(currNum-n+1) + int64(i))
-		block, err := im.goEthClient.BlockByNumber(ctx, blockNum)
+		blockNum := currNum - n + 1 + uint64(i)
+		block, err := im.GetBlockByNumber(ctx, blockNum)
 		if err != nil {
 			ctx.With(zap.Error(err)).Error("goEthClient.BlockByNumber failed in eth.GetBlocks")
 			return nil, err
 		}
 
-		blocks = append(blocks, &Block{
-			BlockNum:   block.NumberU64(),
-			BlockHash:  block.Hash().String(),
-			BlockTime:  block.Time(),
-			ParentHash: block.ParentHash().String(),
-		})
+		blocks = append(blocks, block)
 	}
 
 	return blocks, nil

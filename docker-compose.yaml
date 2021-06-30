@@ -7,3 +7,21 @@ services:
       dockerfile: ./service/api/Dockerfile
     ports:
       - "8080:8080"
+    depends_on:
+      - db
+  indexer:
+    build: 
+      context: ./
+      dockerfile: ./service/indexer/Dockerfile
+    depends_on:
+      - db
+  db:                    
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: hw
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./service/db:/docker-entrypoint-initdb.d

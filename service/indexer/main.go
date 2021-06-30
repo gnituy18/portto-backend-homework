@@ -1,6 +1,7 @@
 package main
 
 import (
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -62,4 +63,42 @@ func worker(numCh <-chan uint64, ethclient eth.Eth) {
 
 		log.Global().With(zap.String("block hash", block.BlockHash)).Info("GetBlockByNumber")
 	}
+}
+
+var (
+	updateBlockNumInterval = time.Minute
+)
+
+func NewBlockNumReader(ethclient eth.Eth) *BlockNumReader {
+	reader := &BlockNumReader{}
+
+	go func() {
+		c := time.Tick(updateBlockNumInterval)
+		for range c {
+			n, err := ethclient.GetBlockNum(context.Background())
+			if err != nil {
+				log.Global().Error("ethclient.GetBlockNum failed")
+				continue
+			}
+
+			reader.mux.Lock()
+			log.Global().Error("update curr block num")
+			defer reader.mux.Unlock()
+			reader.currBlockNum = n
+
+		}
+	}()
+
+	return reader
+}
+
+type BlockNumReader struct {
+	currBlockNum uint64
+	mux          sync.RWMutex
+}
+
+func (r *BlockNumReader) GetBlockNum() uint64 {
+	r.mux.RLock()
+	defer r.mux.RUnlock()
+	return r.currBlockNum
 }

@@ -31,17 +31,82 @@ type impl struct {
 	db          *gorm.DB
 }
 
-func (im *impl) GetBlockNum(ctx context.Context) (uint64, error) {
+func (im *impl) GetBlocks(ctx context.Context, n uint64) ([]*Block, error) {
+	currNum, err := im.GetCurrNum(ctx)
+	if err != nil {
+		ctx.With(zap.Error(err)).Error("GetCurrNum failed in eth.GetBlocks")
+		return nil, err
+	}
+
+	// search in db first
+	dbBlocks, err := im.getBlocksDB(ctx, currNum, n)
+	if err != nil {
+		ctx.With(zap.Error(err)).Error("getBlocksDb failed in eth.GetBlocks")
+		return nil, err
+	}
+
+	numMap := map[uint64]*Block{}
+	for _, b := range dbBlocks {
+		numMap[b.BlockNum] = b
+	}
+
+	blocks := []*Block{}
+	for i := 0; i < int(n); i++ {
+		blockNum := currNum - n + 1 + uint64(i)
+		if b, ok := numMap[blockNum]; ok {
+			blocks = append(blocks, b)
+			continue
+		}
+
+		// inject missing block from rpc
+		block, err := im.GetBlockByNumberRPC(ctx, blockNum)
+		if err != nil {
+			ctx.With(zap.Error(err)).Error("goEthClient.BlockByNumber failed in eth.GetBlocks")
+			return nil, err
+		}
+
+		im.SaveBlock(block)
+		blocks = append(blocks, block)
+	}
+
+	return blocks, nil
+}
+
+func (im *impl) GetCurrNum(ctx context.Context) (uint64, error) {
 	currNum, err := im.goEthClient.BlockNumber(ctx)
 	if err != nil {
-		ctx.With(zap.Error(err)).Error("goEthClient.BlockNumber failed in eth.GetBlockNum")
+		ctx.With(zap.Error(err)).Error("goEthClient.BlockNumber failed in eth.GetCurrNum")
 		return 0, err
 	}
 
 	return currNum, nil
 }
 
-func (im *impl) GetBlockByNumber(ctx context.Context, blockNum uint64) (*Block, error) {
+func (im *impl) getBlocksDB(ctx context.Context, currNum, n uint64) ([]*Block, error) {
+	blocks := []*Block{}
+	res := im.db.Where("block_num > ?", currNum-n).Order("block_num").Find(&blocks)
+	if res.Error == gorm.ErrRecordNotFound {
+		return nil, ErrNotFound
+	} else if res.Error != nil {
+		return nil, res.Error
+	}
+
+	return blocks, nil
+}
+
+func (im *impl) GetBlockByNumberDB(ctx context.Context, blockNum uint64) (*Block, error) {
+	block := &Block{}
+	res := im.db.First(block, "block_num = ", blockNum)
+	if res.Error == gorm.ErrRecordNotFound {
+		return nil, ErrNotFound
+	} else if res.Error != nil {
+		return nil, res.Error
+	}
+
+	return block, nil
+}
+
+func (im *impl) GetBlockByNumberRPC(ctx context.Context, blockNum uint64) (*Block, error) {
 	blockNumBig := big.NewInt(int64(blockNum))
 	block, err := im.goEthClient.BlockByNumber(ctx, blockNumBig)
 	if err != nil {
@@ -57,26 +122,13 @@ func (im *impl) GetBlockByNumber(ctx context.Context, blockNum uint64) (*Block, 
 	}, nil
 }
 
-func (im *impl) GetBlocks(ctx context.Context, n uint64) ([]*Block, error) {
-	currNum, err := im.GetBlockNum(ctx)
-	if err != nil {
-		ctx.With(zap.Error(err)).Error("GetBlockNum failed in eth.GetBlocks")
-		return nil, err
+func (im *impl) SaveBlock(b *Block) error {
+	res := im.db.Create(b)
+	if res.Error != nil {
+		return res.Error
 	}
 
-	blocks := []*Block{}
-	for i := 0; i < int(n); i++ {
-		blockNum := currNum - n + 1 + uint64(i)
-		block, err := im.GetBlockByNumber(ctx, blockNum)
-		if err != nil {
-			ctx.With(zap.Error(err)).Error("goEthClient.BlockByNumber failed in eth.GetBlocks")
-			return nil, err
-		}
-
-		blocks = append(blocks, block)
-	}
-
-	return blocks, nil
+	return nil
 }
 
 func (im *impl) GetBlock(ctx context.Context, hash common.Hash) (*Block, error) {

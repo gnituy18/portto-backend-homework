@@ -12,10 +12,13 @@ var (
 )
 
 type Eth interface {
-	GetBlockNum(ctx context.Context) (uint64, error)
-	GetBlock(ctx context.Context, hash common.Hash) (*Block, error)
-	GetBlockByNumber(ctx context.Context, n uint64) (*Block, error)
+	GetCurrNum(ctx context.Context) (uint64, error)
 	GetBlocks(ctx context.Context, n uint64) ([]*Block, error)
+	GetBlock(ctx context.Context, hash common.Hash) (*Block, error)
+
+	GetBlockByNumberRPC(ctx context.Context, n uint64) (*Block, error)
+	GetBlockByNumberDB(ctx context.Context, n uint64) (*Block, error)
+	SaveBlock(b *Block) error
 
 	GetTransation(ctx context.Context, txHash common.Hash) (*Transation, error)
 }

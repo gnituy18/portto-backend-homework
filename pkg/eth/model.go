@@ -1,11 +1,11 @@
 package eth
 
 type Block struct {
-	BlockNum     uint64   `json:"block_num"`
-	BlockHash    string   `json:"block_hash"`
+	BlockNum     uint64   `json:"block_num" gorm:"primaryKey,index"`
+	BlockHash    string   `json:"block_hash" `
 	BlockTime    uint64   `json:"block_time"`
 	ParentHash   string   `json:"parent_hash"`
-	Transactions []string `json:"transations,omitempty"`
+	Transactions []string `json:"transations,omitempty" gorm:"-"`
 }
 
 type Transation struct {

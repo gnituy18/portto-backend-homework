@@ -52,13 +52,13 @@ func main() {
 
 func worker(numCh <-chan uint64, ethclient eth.Eth) {
 	for n := range numCh {
-		block, err := ethclient.GetBlockByNumber(context.Background(), n)
+		block, err := ethclient.GetBlockByNumberRPC(context.Background(), n)
 		if err != nil {
-			log.Global().Error("block hash:" + block.BlockHash)
+			log.Global().With(zap.Uint64("blockNum", n)).Error("GetBlockByNumberRPC")
 			continue
 		}
 
-		log.Global().With(zap.String("block hash", block.BlockHash)).Info("GetBlockByNumber")
+		log.Global().With(zap.String("block hash", block.BlockHash)).Info("GetBlockByNumberRPC")
 	}
 }
 
@@ -73,7 +73,7 @@ func NewBlockNumReader(ethclient eth.Eth) *BlockNumReader {
 	go func() {
 		c := time.Tick(updateBlockNumInterval)
 		for range c {
-			n, err := ethclient.GetBlockNum(context.Background())
+			n, err := ethclient.GetCurrNum(context.Background())
 			if err != nil {
 				log.Global().Error("ethclient.GetBlockNum failed")
 				continue
@@ -81,7 +81,7 @@ func NewBlockNumReader(ethclient eth.Eth) *BlockNumReader {
 
 			reader.mux.Lock()
 			log.Global().Error("update curr block num")
-			defer reader.mux.Unlock()
+			reader.mux.Unlock()
 			reader.currBlockNum = n
 
 		}

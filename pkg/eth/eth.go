@@ -14,6 +14,7 @@ var (
 type Eth interface {
 	GetBlocks(ctx context.Context, n uint64) ([]*Block, error)
 	GetBlock(ctx context.Context, hash common.Hash) (*Block, error)
+	GetBlockNum(ctx context.Context) (uint64, error)
 
 	GetTransation(ctx context.Context, txHash common.Hash) (*Transation, error)
 }

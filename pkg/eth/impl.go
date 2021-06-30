@@ -28,10 +28,20 @@ type impl struct {
 	url         string
 }
 
-func (im *impl) GetBlocks(ctx context.Context, n uint64) ([]*Block, error) {
+func (im *impl) GetBlockNum(ctx context.Context) (uint64, error) {
 	currNum, err := im.goEthClient.BlockNumber(ctx)
 	if err != nil {
-		ctx.With(zap.Error(err)).Error("goEthClient.BlockNumber failed in eth.GetBlocks")
+		ctx.With(zap.Error(err)).Error("goEthClient.BlockNumber failed in eth.GetBlockNum")
+		return 0, err
+	}
+
+	return currNum, nil
+}
+
+func (im *impl) GetBlocks(ctx context.Context, n uint64) ([]*Block, error) {
+	currNum, err := im.GetBlockNum(ctx)
+	if err != nil {
+		ctx.With(zap.Error(err)).Error("GetBlockNum failed in eth.GetBlocks")
 		return nil, err
 	}
 

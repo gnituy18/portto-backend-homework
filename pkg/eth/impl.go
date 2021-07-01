@@ -59,76 +59,17 @@ func (im *impl) GetBlocks(ctx context.Context, n uint64) ([]*Block, error) {
 		}
 
 		// inject missing block from rpc
-		block, err := im.GetBlockByNumberRPC(ctx, blockNum)
+		block, err := im.getBlockByNumberRPC(ctx, blockNum)
 		if err != nil {
 			ctx.With(zap.Error(err)).Error("goEthClient.BlockByNumber failed in eth.GetBlocks")
 			return nil, err
 		}
 
-		im.SaveBlock(block)
+		im.saveBlock(block)
 		blocks = append(blocks, block)
 	}
 
 	return blocks, nil
-}
-
-func (im *impl) GetCurrNum(ctx context.Context) (uint64, error) {
-	currNum, err := im.goEthClient.BlockNumber(ctx)
-	if err != nil {
-		ctx.With(zap.Error(err)).Error("goEthClient.BlockNumber failed in eth.GetCurrNum")
-		return 0, err
-	}
-
-	return currNum, nil
-}
-
-func (im *impl) getBlocksDB(ctx context.Context, currNum, n uint64) ([]*Block, error) {
-	blocks := []*Block{}
-	res := im.db.Where("block_num > ?", currNum-n).Order("block_num").Find(&blocks)
-	if res.Error == gorm.ErrRecordNotFound {
-		return nil, ErrNotFound
-	} else if res.Error != nil {
-		return nil, res.Error
-	}
-
-	return blocks, nil
-}
-
-func (im *impl) GetBlockByNumberDB(ctx context.Context, blockNum uint64) (*Block, error) {
-	block := &Block{}
-	res := im.db.First(block, "block_num = ", blockNum)
-	if res.Error == gorm.ErrRecordNotFound {
-		return nil, ErrNotFound
-	} else if res.Error != nil {
-		return nil, res.Error
-	}
-
-	return block, nil
-}
-
-func (im *impl) GetBlockByNumberRPC(ctx context.Context, blockNum uint64) (*Block, error) {
-	blockNumBig := big.NewInt(int64(blockNum))
-	block, err := im.goEthClient.BlockByNumber(ctx, blockNumBig)
-	if err != nil {
-		ctx.With(zap.Error(err)).Error("goEthClient.BlockByNumber failed in eth.GetBlocks")
-		return nil, err
-	}
-
-	return &Block{
-		BlockNum:   block.NumberU64(),
-		BlockHash:  block.Hash().String(),
-		BlockTime:  block.Time(),
-		ParentHash: block.ParentHash().String(),
-	}, nil
-}
-
-func (im *impl) SaveBlock(b *Block) error {
-	res := im.db.Create(b)
-	if res.Error != nil {
-		return res.Error
-	}
-
-	return nil
 }
 
 func (im *impl) GetBlock(ctx context.Context, hash common.Hash) (*Block, error) {
@@ -213,6 +154,87 @@ func (im *impl) GetTransaction(ctx context.Context, txHash common.Hash) (*Transa
 }
 
 func (im *impl) SaveTransaction(b *Transaction) error {
+	res := im.db.Create(b)
+	if res.Error != nil {
+		return res.Error
+	}
+
+	return nil
+}
+
+func (im *impl) GetCurrNum(ctx context.Context) (uint64, error) {
+	currNum, err := im.goEthClient.BlockNumber(ctx)
+	if err != nil {
+		ctx.With(zap.Error(err)).Error("goEthClient.BlockNumber failed in eth.GetCurrNum")
+		return 0, err
+	}
+
+	return currNum, nil
+}
+
+func (im *impl) getBlocksDB(ctx context.Context, currNum, n uint64) ([]*Block, error) {
+	blocks := []*Block{}
+	res := im.db.Where("block_num > ?", currNum-n).Order("block_num").Find(&blocks)
+	if res.Error == gorm.ErrRecordNotFound {
+		return nil, ErrNotFound
+	} else if res.Error != nil {
+		return nil, res.Error
+	}
+
+	return blocks, nil
+}
+
+func (im *impl) FetchBlockAndSave(ctx context.Context, blockNum uint64) (bool, error) {
+	if _, err := im.getBlockByNumberDB(ctx, blockNum); err == nil {
+		return false, nil
+	} else if err != nil && err != ErrNotFound {
+		ctx.With(zap.Error(err)).Error("getBlockByNumberDB failed")
+		return false, err
+	}
+
+	block, err := im.getBlockByNumberRPC(ctx, blockNum)
+	if err != nil {
+		ctx.With(zap.Error(err)).Error("getBlockByNumberRPC failed")
+		return false, err
+	}
+
+	if err := im.saveBlock(block); err != nil {
+		ctx.With(zap.Error(err)).Error("saveBlock failed")
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (im *impl) getBlockByNumberDB(ctx context.Context, blockNum uint64) (*Block, error) {
+	block := &Block{}
+	res := im.db.First(block, "block_num", blockNum)
+	if res.Error == gorm.ErrRecordNotFound {
+		return nil, ErrNotFound
+	} else if res.Error != nil {
+		return nil, res.Error
+	}
+
+	return block, nil
+}
+
+func (im *impl) getBlockByNumberRPC(ctx context.Context, blockNum uint64) (*Block, error) {
+	blockNumBig := big.NewInt(int64(blockNum))
+	block, err := im.goEthClient.BlockByNumber(ctx, blockNumBig)
+	if err != nil {
+		ctx.With(zap.Error(err)).Error("goEthClient.BlockByNumber failed in eth.GetBlocks")
+		return nil, err
+	}
+
+	return &Block{
+		BlockNum:   block.NumberU64(),
+		BlockHash:  block.Hash().String(),
+		BlockTime:  block.Time(),
+		ParentHash: block.ParentHash().String(),
+	}, nil
+}
+
+func (im *impl) saveBlock(b *Block) error {
 	res := im.db.Create(b)
 	if res.Error != nil {
 		return res.Error

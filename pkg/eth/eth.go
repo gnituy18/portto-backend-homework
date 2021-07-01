@@ -15,10 +15,9 @@ type Eth interface {
 	GetCurrNum(ctx context.Context) (uint64, error)
 	GetBlocks(ctx context.Context, n uint64) ([]*Block, error)
 	GetBlock(ctx context.Context, hash common.Hash) (*Block, error)
-
-	GetBlockByNumberRPC(ctx context.Context, n uint64) (*Block, error)
-	GetBlockByNumberDB(ctx context.Context, n uint64) (*Block, error)
-	SaveBlock(b *Block) error
-
 	GetTransaction(ctx context.Context, txHash common.Hash) (*Transaction, error)
+
+	// FetchBlockAndSave fetch block from RPC and save if block not exist in db.
+	// Return true if block is fetched from RPC, and false if block is saved already.
+	FetchBlockAndSave(ctx context.Context, blockNum uint64) (bool, error)
 }

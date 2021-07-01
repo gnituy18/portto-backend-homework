@@ -15,7 +15,7 @@ type Transaction struct {
 	Nonce  uint64 `json:"nonce"`
 	Data   string `json:"data"`
 	Value  int64  `json:"value"`
-	Logs   []*Log `json:"logs" gorm:"column:logs;type:text"`
+	Logs   []*Log `json:"logs" gorm:"embedded"`
 }
 
 type Log struct {

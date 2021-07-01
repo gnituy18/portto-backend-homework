@@ -45,6 +45,11 @@ func (h *ethHandler) getBlocks(c *gin.Context) {
 		return
 	}
 
+	// remove tx fields to fit resp spec
+	for _, b := range blocks {
+		b.Transactions = nil
+	}
+
 	c.JSON(http.StatusOK, gin.H{"blocks": blocks})
 }
 

@@ -31,6 +31,16 @@ type impl struct {
 	db          *gorm.DB
 }
 
+func (im *impl) GetCurrNum(ctx context.Context) (uint64, error) {
+	currNum, err := im.goEthClient.BlockNumber(ctx)
+	if err != nil {
+		ctx.With(zap.Error(err)).Error("goEthClient.BlockNumber failed in eth.GetCurrNum")
+		return 0, err
+	}
+
+	return currNum, nil
+}
+
 func (im *impl) GetBlocks(ctx context.Context, n uint64) ([]*Block, error) {
 	currNum, err := im.GetCurrNum(ctx)
 	if err != nil {
@@ -97,6 +107,52 @@ func (im *impl) GetBlock(ctx context.Context, hash common.Hash) (*Block, error) 
 }
 
 func (im *impl) GetTransaction(ctx context.Context, txHash common.Hash) (*Transaction, error) {
+	if tx, err := im.getTransactionDB(ctx, txHash); err == nil {
+		return tx, nil
+	} else if err != nil && err != ErrNotFound {
+		ctx.With(zap.Error(err)).Error("getTransactionDB failed")
+		return nil, err
+	}
+
+	tx, err := im.getTransactionRPC(ctx, txHash)
+	if err != nil {
+		ctx.With(zap.Error(err)).Error("getTransactionRPC failed")
+		return nil, err
+	}
+
+	if err := im.saveTransaction(tx); err != nil {
+		ctx.With(zap.Error(err)).Error("saveTransaction failed")
+		return nil, err
+	}
+
+	return tx, nil
+}
+
+func (im *impl) FetchBlockAndSave(ctx context.Context, blockNum uint64) (bool, error) {
+	if _, err := im.getBlockByNumberDB(ctx, blockNum); err == nil {
+		return false, nil
+	} else if err != nil && err != ErrNotFound {
+		ctx.With(zap.Error(err)).Error("getBlockByNumberDB failed")
+		return false, err
+	}
+
+	block, err := im.getBlockByNumberRPC(ctx, blockNum)
+	if err != nil {
+		ctx.With(zap.Error(err)).Error("getBlockByNumberRPC failed")
+		return false, err
+	}
+
+	if err := im.saveBlock(block); err != nil {
+		ctx.With(zap.Error(err)).Error("saveBlock failed")
+		return false, err
+	}
+
+	return true, nil
+}
+
+// transaction helpers
+
+func (im *impl) getTransactionRPC(ctx context.Context, txHash common.Hash) (*Transaction, error) {
 	recp, err := im.goEthClient.TransactionReceipt(ctx, txHash)
 	if err != nil {
 		ctx.With(
@@ -134,7 +190,7 @@ func (im *impl) GetTransaction(ctx context.Context, txHash common.Hash) (*Transa
 	if tx.To() != nil {
 		to = tx.To().String()
 	}
-	logs := []*Log{}
+	logs := Logs{}
 	for _, log := range recp.Logs {
 		logs = append(logs, &Log{
 			Index: log.Index,
@@ -149,12 +205,24 @@ func (im *impl) GetTransaction(ctx context.Context, txHash common.Hash) (*Transa
 		Nonce:  tx.Nonce(),
 		Data:   common.Bytes2Hex(tx.Data()),
 		Value:  val,
-		Logs:   logs,
+		Logs:   &logs,
 	}, nil
 }
 
-func (im *impl) SaveTransaction(b *Transaction) error {
-	res := im.db.Create(b)
+func (im *impl) getTransactionDB(ctx context.Context, txHash common.Hash) (*Transaction, error) {
+	tx := &Transaction{}
+	res := im.db.First(tx, "tx_hash", txHash.String())
+	if res.Error == gorm.ErrRecordNotFound {
+		return nil, ErrNotFound
+	} else if res.Error != nil {
+		return nil, res.Error
+	}
+
+	return tx, nil
+}
+
+func (im *impl) saveTransaction(tx *Transaction) error {
+	res := im.db.Create(tx)
 	if res.Error != nil {
 		return res.Error
 	}
@@ -162,15 +230,7 @@ func (im *impl) SaveTransaction(b *Transaction) error {
 	return nil
 }
 
-func (im *impl) GetCurrNum(ctx context.Context) (uint64, error) {
-	currNum, err := im.goEthClient.BlockNumber(ctx)
-	if err != nil {
-		ctx.With(zap.Error(err)).Error("goEthClient.BlockNumber failed in eth.GetCurrNum")
-		return 0, err
-	}
-
-	return currNum, nil
-}
+// block helpers
 
 func (im *impl) getBlocksDB(ctx context.Context, currNum, n uint64) ([]*Block, error) {
 	blocks := []*Block{}
@@ -182,28 +242,6 @@ func (im *impl) getBlocksDB(ctx context.Context, currNum, n uint64) ([]*Block, e
 	}
 
 	return blocks, nil
-}
-
-func (im *impl) FetchBlockAndSave(ctx context.Context, blockNum uint64) (bool, error) {
-	if _, err := im.getBlockByNumberDB(ctx, blockNum); err == nil {
-		return false, nil
-	} else if err != nil && err != ErrNotFound {
-		ctx.With(zap.Error(err)).Error("getBlockByNumberDB failed")
-		return false, err
-	}
-
-	block, err := im.getBlockByNumberRPC(ctx, blockNum)
-	if err != nil {
-		ctx.With(zap.Error(err)).Error("getBlockByNumberRPC failed")
-		return false, err
-	}
-
-	if err := im.saveBlock(block); err != nil {
-		ctx.With(zap.Error(err)).Error("saveBlock failed")
-		return false, err
-	}
-
-	return true, nil
 }
 
 func (im *impl) getBlockByNumberDB(ctx context.Context, blockNum uint64) (*Block, error) {
@@ -232,6 +270,18 @@ func (im *impl) getBlockByNumberRPC(ctx context.Context, blockNum uint64) (*Bloc
 		BlockTime:  block.Time(),
 		ParentHash: block.ParentHash().String(),
 	}, nil
+}
+
+func (im *impl) getBlockByHashDB(ctx context.Context, hash common.Hash) (*Block, error) {
+	block := &Block{}
+	res := im.db.First(block, "block_hash", hash.String())
+	if res.Error == gorm.ErrRecordNotFound {
+		return nil, ErrNotFound
+	} else if res.Error != nil {
+		return nil, res.Error
+	}
+
+	return block, nil
 }
 
 func (im *impl) saveBlock(b *Block) error {

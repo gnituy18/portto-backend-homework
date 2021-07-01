@@ -1,5 +1,10 @@
 package eth
 
+import (
+	"database/sql/driver"
+	"encoding/json"
+)
+
 type Block struct {
 	BlockNum     uint64   `json:"block_num" gorm:"primaryKey,index"`
 	BlockHash    string   `json:"block_hash" gorm:"index"`
@@ -10,12 +15,23 @@ type Block struct {
 
 type Transaction struct {
 	TxHash string `json:"tx_hash" gorm:"primaryKey"`
-	From   string `json:"from"`
-	To     string `json:"to"`
+	From   string `json:"from" gorm:"column:from_acc"`
+	To     string `json:"to" gorm:"column:to_acc"`
 	Nonce  uint64 `json:"nonce"`
 	Data   string `json:"data"`
 	Value  int64  `json:"value"`
-	Logs   []*Log `json:"logs" gorm:"embedded"`
+	Logs   *Logs  `json:"logs" gorm:"column:logs;type:text"`
+}
+
+type Logs []*Log
+
+func (l *Logs) Scan(src interface{}) error {
+	return json.Unmarshal([]byte(src.(string)), l)
+}
+
+func (l *Logs) Value() (driver.Value, error) {
+	val, err := json.Marshal(l)
+	return string(val), err
 }
 
 type Log struct {

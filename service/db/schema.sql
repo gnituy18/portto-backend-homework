@@ -11,8 +11,8 @@ create index block_hash_index on blocks(block_hash);
 
 create table transactions (
   tx_hash char(66) not null unique,
-  from_acc char(66),
-  to_acc char(66),
+  from_acc char(40),
+  to_acc char(40),
   nonce bigint,
   data text,
   value bigint,

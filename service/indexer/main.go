@@ -57,7 +57,7 @@ func worker(numCh <-chan uint64, eth eth.Eth) {
 		}
 
 		if fetched {
-			log.Global().With(zap.Uint64("blockNum", n)).Info("fetched from RPC")
+			log.Global().With(zap.Uint64("blockNum", n)).Info("fetched ans saved from RPC")
 		}
 	}
 }

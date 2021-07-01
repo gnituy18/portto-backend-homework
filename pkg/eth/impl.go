@@ -92,7 +92,7 @@ func (im *impl) GetBlock(ctx context.Context, hash common.Hash) (*Block, error) 
 		return nil, err
 	}
 
-	txHashs := []string{}
+	txHashs := BlockTxsHashs{}
 	for _, tx := range block.Transactions() {
 		txHashs = append(txHashs, tx.Hash().String())
 	}
@@ -102,7 +102,7 @@ func (im *impl) GetBlock(ctx context.Context, hash common.Hash) (*Block, error) 
 		BlockHash:    block.Hash().String(),
 		BlockTime:    block.Time(),
 		ParentHash:   block.ParentHash().String(),
-		Transactions: txHashs,
+		Transactions: &txHashs,
 	}, nil
 }
 
@@ -264,11 +264,17 @@ func (im *impl) getBlockByNumberRPC(ctx context.Context, blockNum uint64) (*Bloc
 		return nil, err
 	}
 
+	txHashs := BlockTxsHashs{}
+	for _, tx := range block.Transactions() {
+		txHashs = append(txHashs, tx.Hash().String())
+	}
+
 	return &Block{
-		BlockNum:   block.NumberU64(),
-		BlockHash:  block.Hash().String(),
-		BlockTime:  block.Time(),
-		ParentHash: block.ParentHash().String(),
+		BlockNum:     block.NumberU64(),
+		BlockHash:    block.Hash().String(),
+		BlockTime:    block.Time(),
+		ParentHash:   block.ParentHash().String(),
+		Transactions: &txHashs,
 	}, nil
 }
 

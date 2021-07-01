@@ -6,11 +6,22 @@ import (
 )
 
 type Block struct {
-	BlockNum     uint64   `json:"block_num" gorm:"primaryKey,index"`
-	BlockHash    string   `json:"block_hash" gorm:"index"`
-	BlockTime    uint64   `json:"block_time"`
-	ParentHash   string   `json:"parent_hash"`
-	Transactions []string `json:"Transactions,omitempty" gorm:"-"`
+	BlockNum     uint64         `json:"block_num" gorm:"primaryKey,index"`
+	BlockHash    string         `json:"block_hash" gorm:"index"`
+	BlockTime    uint64         `json:"block_time"`
+	ParentHash   string         `json:"parent_hash"`
+	Transactions *BlockTxsHashs `json:"transactions,omitempty" gorm:"type:text"`
+}
+
+type BlockTxsHashs []string
+
+func (bh *BlockTxsHashs) Scan(src interface{}) error {
+	return json.Unmarshal([]byte(src.(string)), bh)
+}
+
+func (bh *BlockTxsHashs) Value() (driver.Value, error) {
+	val, err := json.Marshal(bh)
+	return string(val), err
 }
 
 type Transaction struct {

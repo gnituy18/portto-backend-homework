@@ -5,10 +5,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"prottohw/pkg/api"
-	"prottohw/pkg/db"
-	"prottohw/pkg/eth"
-	"prottohw/pkg/log"
+	"porttohw/pkg/api"
+	"porttohw/pkg/db"
+	"porttohw/pkg/eth"
+	"porttohw/pkg/log"
 )
 
 var (

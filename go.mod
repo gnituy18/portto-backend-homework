@@ -1,4 +1,4 @@
-module prottohw
+module porttohw
 
 go 1.16
 

@@ -9,7 +9,7 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
-	"prottohw/pkg/context"
+	"porttohw/pkg/context"
 )
 
 func New(url string, db *gorm.DB) Eth {

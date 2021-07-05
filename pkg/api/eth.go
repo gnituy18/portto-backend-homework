@@ -7,8 +7,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gin-gonic/gin"
 
-	"prottohw/pkg/context"
-	"prottohw/pkg/eth"
+	"porttohw/pkg/context"
+	"porttohw/pkg/eth"
 )
 
 func MountEthRoutes(group *gin.RouterGroup, ethClient eth.Eth) error {
